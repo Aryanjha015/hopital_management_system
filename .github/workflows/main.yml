@@ -10,49 +10,45 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-    # Service containers to run with this job (Spins up a real MySQL Instance)
     services:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: "0000" # Matches your project.py database password
+          MYSQL_ROOT_PASSWORD: "0000"
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
-    # 1. Checkout the repository files
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    # 2. Set up the MySQL Database structure using your project.sql
+    # Gives MySQL service container a moment to safely initialize 
+    - name: Wait for MySQL to be ready
+      run: sleep 10
+
+    # Installed mysql-client to run the local injection securely
     - name: Initialize MySQL Database
       run: |
         sudo apt-get update
         sudo apt-get install -y mysql-client
         mysql -h 127.0.0.1 -u root -p"0000" < project.sql
 
-    # 3. Set up Python Environment
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-python-version: '3.10'
+        python-version: '3.10' # ✅ Fixed property name
 
-    # 4. Install dependencies
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install mysql-connector-python flake8
 
-    # 5. Lint code syntax checking for errors
     - name: Lint with flake8
       run: |
-        # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub Editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    # 6. Run Syntax & Component verification
     - name: Verify Python Script Compilation
       run: |
         python -m py_compile project.py
